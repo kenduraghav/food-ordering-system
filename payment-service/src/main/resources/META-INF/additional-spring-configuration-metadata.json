@@ -1,0 +1,12 @@
+{"properties": [
+  {
+    "name": "payment.gateway.stripe.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'payment.gateway.stripe.api-key'"
+  },
+  {
+    "name": "payment.gateway.razorpay.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'payment.gateway.razorpay.api-key'"
+  }
+]}

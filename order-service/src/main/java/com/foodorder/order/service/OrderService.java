@@ -8,7 +8,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,19 +25,33 @@ import com.foodorder.order.dto.OrderRequest;
 import com.foodorder.order.dto.OrderResponse;
 import com.foodorder.order.dto.external.MenuItemResponse;
 import com.foodorder.order.dto.external.RestaurantResponse;
-import com.foodorder.order.dto.external.UserResponse;
+import com.foodorder.order.event.OrderCreatedEvent;
+import com.foodorder.order.event.PaymentProcessedEvent;
+import com.foodorder.order.event.PaymentStatus;
 
 @Service
 public class OrderService {
     
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
     
-    @Autowired
-    private UserServiceClient userServiceClient;
+    private final UserServiceClient userServiceClient;
     
-    @Autowired
-    private RestaurantServiceClient restaurantServiceClient;
+    private final RestaurantServiceClient restaurantServiceClient;
+    
+    private final RabbitTemplate rabbitTemplate;
+    
+ // Constants for exchanges and routing keys
+    private static final String ORDER_EXCHANGE = "order.exchange";
+    private static final String ORDER_CREATED_ROUTING_KEY = "order.created";
+    
+    
+    public OrderService(RabbitTemplate rabbitTemplate, UserServiceClient userServiceClient, RestaurantServiceClient restaurantServiceClient, OrderRepository orderRepository) {
+		this.orderRepository = orderRepository;
+		this.userServiceClient = userServiceClient;
+		this.restaurantServiceClient = restaurantServiceClient;
+		this.rabbitTemplate = rabbitTemplate;
+    	
+    }
     
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
@@ -99,6 +114,22 @@ public class OrderService {
         
         // 8. Save order
         Order savedOrder = orderRepository.save(order);
+        
+     // Publish order created event
+        OrderCreatedEvent event = new OrderCreatedEvent(
+            savedOrder.getId(),
+            savedOrder.getUserId(),
+            savedOrder.getRestaurantId(),
+            savedOrder.getTotalAmount(),
+            "CREDIT_CARD", // Default payment method, you can make this dynamic
+            LocalDateTime.now()
+        );
+        
+        rabbitTemplate.convertAndSend(
+                ORDER_EXCHANGE,
+                ORDER_CREATED_ROUTING_KEY,
+                event
+            );
         
         return convertToResponse(savedOrder, restaurant.name());
     }
@@ -183,5 +214,28 @@ public class OrderService {
             order.getCreatedAt(),
             itemResponses
         );
+    }
+    
+    
+    // Add method to listen to payment processed events
+    @RabbitListener(queues = "order.status.queue")
+    @Transactional
+    public void handlePaymentProcessed(PaymentProcessedEvent event) {
+        System.out.println("Received payment processed event for order: " + event.orderId());
+        
+        Optional<Order> orderOpt = orderRepository.findById(event.orderId());
+        if (orderOpt.isPresent()) {
+            Order order = orderOpt.get();
+            
+            if (event.status() == PaymentStatus.SUCCESS) {
+                order.setStatus(OrderStatus.CONFIRMED);
+                System.out.println("Order confirmed: " + order.getId());
+            } else {
+                order.setStatus(OrderStatus.CANCELLED);
+                System.out.println("Order cancelled due to payment failure: " + order.getId());
+            }
+            
+            orderRepository.save(order);
+        }
     }
 }
