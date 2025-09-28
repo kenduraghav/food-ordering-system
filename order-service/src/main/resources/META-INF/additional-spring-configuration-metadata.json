@@ -1,0 +1,12 @@
+{"properties": [
+  {
+    "name": "services.user-service.url",
+    "type": "java.lang.String",
+    "description": "A description for 'services.user-service.url'"
+  },
+  {
+    "name": "services.restaurant-service.url",
+    "type": "java.lang.String",
+    "description": "A description for 'services.restaurant-service.url'"
+  }
+]}
