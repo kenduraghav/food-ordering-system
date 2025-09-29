@@ -4,6 +4,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -14,6 +16,8 @@ import com.foodorder.order.dto.external.RestaurantResponse;
 
 @Component
 public class RestaurantServiceClient {
+
+    private static final Logger logger = LoggerFactory.getLogger(RestaurantServiceClient.class);
 
 	private final RestTemplate restTemplate;
 
@@ -28,6 +32,7 @@ public class RestaurantServiceClient {
 	public Optional<RestaurantResponse> getRestaurantById(String restaurantId) {
         try {
             String url = restaurantServiceUrl + "/api/restaurants/" + restaurantId;
+            logger.info("RestaurantServiceClient.getRestaurantById() service url: " + url);
             RestaurantResponse restaurant = restTemplate.getForObject(url, RestaurantResponse.class);
             return Optional.ofNullable(restaurant);
         } catch (HttpClientErrorException.NotFound e) {

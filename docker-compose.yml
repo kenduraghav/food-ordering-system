@@ -1,10 +1,29 @@
 services:
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_CLOUD_GATEWAY_ROUTES_0_URI=http://user-service:8081
+      - SPRING_CLOUD_GATEWAY_ROUTES_1_URI=http://restaurant-service:8082
+      - SPRING_CLOUD_GATEWAY_ROUTES_2_URI=http://order-service:8083
+      - SPRING_CLOUD_GATEWAY_ROUTES_3_URI=http://payment-service:8084
+    depends_on:
+      - user-service
+      - restaurant-service
+      - order-service
+      - payment-service
+    networks:
+      - food-network
+
   user-service:
     build: 
       context: ./user-service
       dockerfile: Dockerfile
-    ports:
-      - "${USER_SERVICE_PORT}:8081"
+    #ports:
+    #  - "${USER_SERVICE_PORT}:8081"
     environment: &common-env
       SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
@@ -24,8 +43,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./src/main/resources:/app/src/main/resources
-    ports:
-      - "${RESTAURANT_SERVICE_PORT}:8082"
+    #ports:
+    #  - "${RESTAURANT_SERVICE_PORT}:8082"
     environment: *common-env
     depends_on:
       - postgres
@@ -37,8 +56,8 @@ services:
     build:
       context: ./order-service
       dockerfile: Dockerfile
-    ports:
-      - "${ORDER_SERVICE_PORT}:8083"
+    #ports:
+    #  - "${ORDER_SERVICE_PORT}:8083"
     environment:
       <<: *common-env
       SERVICES_USER_SERVICE_URL: http://user-service:8081
@@ -55,8 +74,8 @@ services:
     build:
       context: ./payment-service
       dockerfile: Dockerfile
-    ports:
-      - "${PAYMENT_SERVICE_PORT}:8084"
+    #ports:
+    #  - "${PAYMENT_SERVICE_PORT}:8084"
     environment: *common-env
     depends_on:
       - postgres

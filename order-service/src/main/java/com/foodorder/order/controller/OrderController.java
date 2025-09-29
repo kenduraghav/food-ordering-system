@@ -3,6 +3,8 @@ package com.foodorder.order.controller;
 import java.util.List;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +27,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/orders")
 public class OrderController {
     
+    private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
     
     private final OrderService orderService;
     
@@ -35,9 +38,11 @@ public class OrderController {
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(@Valid @RequestBody OrderRequest request) {
         try {
+            logger.info("order request received: " + request.toString());
             OrderResponse order = orderService.createOrder(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(order);
         } catch (RuntimeException e) {
+            logger.error("Error Occurred", e);
             return ResponseEntity.badRequest().build();
         }
     }
