@@ -7,41 +7,128 @@ spring:
   
   cloud:
     gateway:
-      routes:
-        # User Service
-        - id: user-service
-          uri: http://localhost:8081
-          predicates:
-            - Path=/api/users/**
-        
-        # Restaurant Service
-        - id: restaurant-service
-          uri: http://localhost:8082
-          predicates:
-            - Path=/api/restaurants/**
-        
-        # Order Service
-        - id: order-service
-          uri: http://localhost:8083
-          predicates:
-            - Path=/api/orders/**
-        
-        # Payment Service
-        - id: payment-service
-          uri: http://localhost:8084
-          predicates:
-            - Path=/api/payments/**
+      server:
+        webflux:
+          routes:
+            # User Service with Circuit Breaker
+            - id: user-service
+              uri: ${USER_SERVICE_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/users/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: userServiceCB
+                    fallbackUri: forward:/fallback/users
+            
+            # Restaurant Service with Circuit Breaker
+            - id: restaurant-service
+              uri: ${RESTAURANT_SERVICE_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/restaurants/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: restaurantServiceCB
+                    fallbackUri: forward:/fallback/restaurants
+            
+            # Order Service with Circuit Breaker
+            - id: order-service
+              uri: ${ORDER_SERVICE_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/orders/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: orderServiceCB
+                    fallbackUri: forward:/fallback/orders
+            
+            # Payment Service with Circuit Breaker
+            - id: payment-service
+              uri: ${PAYMENT_SERVICE_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/payments/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: paymentServiceCB
+                    fallbackUri: forward:/fallback/payments
 
-# Actuator
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        # How many calls to track for failure rate calculation
+        slidingWindowSize: 10
+        
+        # Minimum calls before circuit breaker can open
+        minimumNumberOfCalls: 5
+        
+        # Failure rate threshold to open circuit (50%)
+        failureRateThreshold: 50
+        
+        # How long to wait before trying again (half-open state)
+        waitDurationInOpenState: 30s
+        
+        # Number of test calls in half-open state
+        permittedNumberOfCallsInHalfOpenState: 3
+        
+        # Automatically transition from open to half-open
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        
+        # Register health indicator
+        registerHealthIndicator: true
+    
+    instances:
+      userServiceCB:
+        baseConfig: default
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+      
+      restaurantServiceCB:
+        baseConfig: default
+        failureRateThreshold: 60
+        waitDurationInOpenState: 15s
+      
+      orderServiceCB:
+        baseConfig: default
+        failureRateThreshold: 40
+        waitDurationInOpenState: 30s
+      
+      paymentServiceCB:
+        baseConfig: default
+        failureRateThreshold: 30
+        waitDurationInOpenState: 60s
+
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+    instances:
+      userServiceCB:
+        timeoutDuration: 3s
+      restaurantServiceCB:
+        timeoutDuration: 3s
+      orderServiceCB:
+        timeoutDuration: 10s
+      paymentServiceCB:
+        timeoutDuration: 10s
+
+# Actuator endpoints to monitor circuit breakers
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,gateway
+        include: health,info,gateway,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
 
 logging:
   level:
-    org.springframework.cloud.gateway: INFO
+    '[org.springframework.cloud.gateway]': INFO
+    '[io.github.resilience4j]': DEBUG

@@ -19,6 +19,9 @@ content-type: application/json
 
 GET http://localhost:8080/api/users
 
+###
+GET http://localhost:8080/api/restaurants/health
+
 
 ###
 GET http://localhost:8081/api/users/5bd0ff66-a69b-42f7-94be-92533d278de9
@@ -30,7 +33,7 @@ GET http://localhost:8081/api/users/email/user2@example.com
 GET http://localhost:8082/api/restaurants/health
 
 ###
-GET http://localhost:8082/api/restaurants
+GET http://localhost:8080/api/restaurants
 
 ###
 GET http://localhost:8082/api/restaurants/cuisines
